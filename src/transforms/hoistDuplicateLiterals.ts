@@ -55,7 +55,9 @@ function needsEscaping(c: string): boolean {
 }
 
 /**
- * Finds a single-char delimiter that doesn't appear in any of the strings.
+ * Finds a single-byte UTF-8 delimiter that doesn't appear in any of the strings.
+ * Only checks ASCII (0-127) since anything else is 2+ bytes in UTF-8.
+ * Returns null if no suitable delimiter is found, triggering fallback to const declarations.
  */
 function findDelimiter(strings: string[]): string | null {
   const allChars = new Set<string>();
@@ -65,6 +67,7 @@ function findDelimiter(strings: string[]): string | null {
     }
   }
 
+  // Preferred delimiters (common punctuation, all single-byte ASCII)
   const preferred = ',;:|!@#$%^&*~`<>?/-_=+.()[]{}';
   for (const d of preferred) {
     if (!allChars.has(d)) {
@@ -72,6 +75,7 @@ function findDelimiter(strings: string[]): string | null {
     }
   }
 
+  // Try all printable ASCII characters (32-126)
   for (let i = 32; i < 127; i++) {
     const c = String.fromCharCode(i);
     if (!needsEscaping(c) && !allChars.has(c)) {
@@ -79,13 +83,8 @@ function findDelimiter(strings: string[]): string | null {
     }
   }
 
-  for (let i = 0x100; i < 0xd800; i++) {
-    const c = String.fromCharCode(i);
-    if (!needsEscaping(c) && !allChars.has(c)) {
-      return c;
-    }
-  }
-
+  // No single-byte delimiter found - return null to fall back to const declarations
+  // (Characters >= 128 are 2+ bytes in UTF-8, negating the benefit of the split approach)
   return null;
 }
 
@@ -156,7 +155,6 @@ export function hoistDuplicateLiterals(ast: File, _options: MinifyOptions = {}):
 
   // Single traversal: collect everything without modifying AST
   traverse(ast, {
-
     MemberExpression(path: NodePath<MemberExpression>): void {
       if (!path.node.computed && t.isIdentifier(path.node.property)) {
         // Dot notation: obj.prop
@@ -167,7 +165,9 @@ export function hoistDuplicateLiterals(ast: File, _options: MinifyOptions = {}):
       } else if (path.node.computed && t.isStringLiteral(path.node.property)) {
         // Bracket notation with string: obj["prop"]
         const value = path.node.property.value;
-        getStringUsage(value).bracketAccessNodes.push(path.get('property') as NodePath<StringLiteral>);
+        getStringUsage(value).bracketAccessNodes.push(
+          path.get('property') as NodePath<StringLiteral>
+        );
       }
     },
 
@@ -194,7 +194,11 @@ export function hoistDuplicateLiterals(ast: File, _options: MinifyOptions = {}):
     },
 
     ClassMethod(path: NodePath<ClassMethod>): void {
-      if (path.node.computed || t.isPrivateName(path.node.key) || path.node.kind === 'constructor') {
+      if (
+        path.node.computed ||
+        t.isPrivateName(path.node.key) ||
+        path.node.kind === 'constructor'
+      ) {
         return;
       }
       if (t.isIdentifier(path.node.key)) {
@@ -244,7 +248,9 @@ export function hoistDuplicateLiterals(ast: File, _options: MinifyOptions = {}):
     NumericLiteral(path: NodePath<NumericLiteral>): void {
       const parent = path.parent;
       // Skip non-computed object property keys
-      if (t.isObjectProperty(parent) && parent.key === path.node && !parent.computed) {return;}
+      if (t.isObjectProperty(parent) && parent.key === path.node && !parent.computed) {
+        return;
+      }
 
       const value = path.node.value;
       const key = `number:${String(value)}`;
@@ -259,7 +265,9 @@ export function hoistDuplicateLiterals(ast: File, _options: MinifyOptions = {}):
     BooleanLiteral(path: NodePath<BooleanLiteral>): void {
       const parent = path.parent;
       // Skip non-computed object property keys
-      if (t.isObjectProperty(parent) && parent.key === path.node && !parent.computed) {return;}
+      if (t.isObjectProperty(parent) && parent.key === path.node && !parent.computed) {
+        return;
+      }
 
       const value = path.node.value;
       const key = `boolean:${String(value)}`;
@@ -274,7 +282,9 @@ export function hoistDuplicateLiterals(ast: File, _options: MinifyOptions = {}):
     NullLiteral(path: NodePath<NullLiteral>): void {
       const parent = path.parent;
       // Skip non-computed object property keys
-      if (t.isObjectProperty(parent) && parent.key === path.node && !parent.computed) {return;}
+      if (t.isObjectProperty(parent) && parent.key === path.node && !parent.computed) {
+        return;
+      }
 
       const key = 'null:null';
       const existing = otherLiterals.get(key);
@@ -288,7 +298,9 @@ export function hoistDuplicateLiterals(ast: File, _options: MinifyOptions = {}):
     BigIntLiteral(path: NodePath<BigIntLiteral>): void {
       const parent = path.parent;
       // Skip non-computed object property keys
-      if (t.isObjectProperty(parent) && parent.key === path.node && !parent.computed) {return;}
+      if (t.isObjectProperty(parent) && parent.key === path.node && !parent.computed) {
+        return;
+      }
 
       const value = path.node.value;
       const key = `bigint:${value}`;
@@ -301,7 +313,9 @@ export function hoistDuplicateLiterals(ast: File, _options: MinifyOptions = {}):
     },
 
     Identifier(path: NodePath<Identifier>): void {
-      if (path.node.name !== 'undefined') {return;}
+      if (path.node.name !== 'undefined') {
+        return;
+      }
 
       const parent = path.parent;
       if (
@@ -338,12 +352,18 @@ export function hoistDuplicateLiterals(ast: File, _options: MinifyOptions = {}):
   const stringCandidates: StringCandidate[] = [];
 
   for (const [value, usage] of stringUsage) {
-    const literalCount = usage.literalNodes.length + usage.bracketAccessNodes.length + usage.stringKeyNodes.length;
+    const literalCount =
+      usage.literalNodes.length + usage.bracketAccessNodes.length + usage.stringKeyNodes.length;
     const propertyAccessCount = usage.dotAccessNodes.length;
-    const objectPropertyCount = usage.identifierKeyNodes.length + usage.classMethodNodes.length + usage.classPropertyNodes.length;
+    const objectPropertyCount =
+      usage.identifierKeyNodes.length +
+      usage.classMethodNodes.length +
+      usage.classPropertyNodes.length;
     const totalOccurrences = literalCount + propertyAccessCount + objectPropertyCount;
 
-    if (totalOccurrences < 2) {continue;}
+    if (totalOccurrences < 2) {
+      continue;
+    }
 
     const selectiveResult = calculateSelectiveStringProfit(
       { literalCount, propertyAccessCount, objectPropertyCount },
@@ -402,9 +422,19 @@ export function hoistDuplicateLiterals(ast: File, _options: MinifyOptions = {}):
       type: 'string',
       value,
       usage: {
-        literalNodes: [...usage.literalNodes, ...usage.bracketAccessNodes, ...usage.stringKeyNodes] as NodePath<StringLiteral>[],
-        propertyAccessNodes: usage.dotAccessNodes.map(d => d.path as unknown as NodePath<StringLiteral>),
-        objectPropertyNodes: [...usage.identifierKeyNodes.map(d => d.path), ...usage.classMethodNodes.map(d => d.path), ...usage.classPropertyNodes.map(d => d.path)] as unknown as NodePath<StringLiteral>[],
+        literalNodes: [
+          ...usage.literalNodes,
+          ...usage.bracketAccessNodes,
+          ...usage.stringKeyNodes,
+        ] as NodePath<StringLiteral>[],
+        propertyAccessNodes: usage.dotAccessNodes.map(
+          (d) => d.path as unknown as NodePath<StringLiteral>
+        ),
+        objectPropertyNodes: [
+          ...usage.identifierKeyNodes.map((d) => d.path),
+          ...usage.classMethodNodes.map((d) => d.path),
+          ...usage.classPropertyNodes.map((d) => d.path),
+        ] as unknown as NodePath<StringLiteral>[],
       },
       occurrences: effectiveOccurrences,
       profit: selectiveResult.profit,
@@ -421,9 +451,19 @@ export function hoistDuplicateLiterals(ast: File, _options: MinifyOptions = {}):
         type: 'string',
         value: candidate.value,
         usage: {
-          literalNodes: [...usage.literalNodes, ...usage.bracketAccessNodes, ...usage.stringKeyNodes] as NodePath<StringLiteral>[],
-          propertyAccessNodes: usage.dotAccessNodes.map(d => d.path as unknown as NodePath<StringLiteral>),
-          objectPropertyNodes: [...usage.identifierKeyNodes.map(d => d.path), ...usage.classMethodNodes.map(d => d.path), ...usage.classPropertyNodes.map(d => d.path)] as unknown as NodePath<StringLiteral>[],
+          literalNodes: [
+            ...usage.literalNodes,
+            ...usage.bracketAccessNodes,
+            ...usage.stringKeyNodes,
+          ] as NodePath<StringLiteral>[],
+          propertyAccessNodes: usage.dotAccessNodes.map(
+            (d) => d.path as unknown as NodePath<StringLiteral>
+          ),
+          objectPropertyNodes: [
+            ...usage.identifierKeyNodes.map((d) => d.path),
+            ...usage.classMethodNodes.map((d) => d.path),
+            ...usage.classPropertyNodes.map((d) => d.path),
+          ] as unknown as NodePath<StringLiteral>[],
         },
         occurrences: effectiveOccurrences,
         profit: selectiveResult.profit,
@@ -438,10 +478,14 @@ export function hoistDuplicateLiterals(ast: File, _options: MinifyOptions = {}):
   const hoistDecisions: HoistDecision[] = [];
 
   for (const [_, info] of otherLiterals) {
-    if (info.nodes.length < 2) {continue;}
+    if (info.nodes.length < 2) {
+      continue;
+    }
 
     const reprLength = getLiteralRepresentationLength(info.value, info.type);
-    if (info.type === 'number' && reprLength <= 2) {continue;}
+    if (info.type === 'number' && reprLength <= 2) {
+      continue;
+    }
 
     const profit = calculateLiteralProfit(
       info.nodes.length,
@@ -468,12 +512,16 @@ export function hoistDuplicateLiterals(ast: File, _options: MinifyOptions = {}):
 
   for (let i = 0; i < stringDecisions.length; i++) {
     const decision = stringDecisions[i];
-    if (decision === undefined) {continue;}
+    if (decision === undefined) {
+      continue;
+    }
 
     const placeholderName = `__niu_literal_${String(i)}__`;
     const value = decision.value;
     const usage = stringUsage.get(value);
-    if (usage === undefined) {continue;}
+    if (usage === undefined) {
+      continue;
+    }
 
     hoistedLiteralBindings.push({
       name: placeholderName,
@@ -529,7 +577,9 @@ export function hoistDuplicateLiterals(ast: File, _options: MinifyOptions = {}):
   const otherLiteralOffset = stringDecisions.length;
   for (let i = 0; i < hoistDecisions.length; i++) {
     const decision = hoistDecisions[i];
-    if (decision === undefined) {continue;}
+    if (decision === undefined) {
+      continue;
+    }
 
     const placeholderName = `__niu_literal_${String(otherLiteralOffset + i)}__`;
 

@@ -59,7 +59,7 @@ const RESERVED_WORDS = new Set([
   'arguments',
 ]);
 
-const CHARS = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ$_';
+const CHARS = 'etaonirshldcumfpgwybvkxjqzETAONIRSHLDCUMFPGWYBVKXJQZ$_';
 
 /**
  * Converts an index to a valid identifier name.
