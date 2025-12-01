@@ -74,14 +74,24 @@ export interface NiuPluginOptions extends MinifyOptions {
   exclude?: RegExp[];
 }
 
+interface OutputAsset {
+  type: 'asset';
+  source: string | Uint8Array;
+}
+
+interface OutputChunk {
+  type: 'chunk';
+  code: string;
+  fileName: string;
+}
+
+type OutputBundle = Record<string, OutputAsset | OutputChunk>;
+
 interface NiuPlugin {
   name: string;
   enforce: 'post';
   apply: 'build';
-  renderChunk: (
-    code: string,
-    chunk: { fileName: string }
-  ) => Promise<{ code: string; map: null } | null>;
+  generateBundle: (options: unknown, bundle: OutputBundle) => Promise<void>;
 }
 
 export function niuPlugin(options: NiuPluginOptions = {}): NiuPlugin {
@@ -90,18 +100,20 @@ export function niuPlugin(options: NiuPluginOptions = {}): NiuPlugin {
     name: 'niu',
     enforce: 'post',
     apply: 'build',
-    async renderChunk(
-      code: string,
-      chunk: { fileName: string }
-    ): Promise<{ code: string; map: null } | null> {
-      if (exclude.some((re) => re.test(chunk.fileName))) {
-        return null;
+    async generateBundle(_options: unknown, bundle: OutputBundle): Promise<void> {
+      for (const [fileName, chunk] of Object.entries(bundle)) {
+        if (chunk.type !== 'chunk') {
+          continue;
+        }
+        if (exclude.some((re) => re.test(fileName))) {
+          continue;
+        }
+        if (!include.some((re) => re.test(fileName))) {
+          continue;
+        }
+        const result = await minify(chunk.code, minifyOptions);
+        chunk.code = result.code;
       }
-      if (!include.some((re) => re.test(chunk.fileName))) {
-        return null;
-      }
-      const result = await minify(code, minifyOptions);
-      return { code: result.code, map: null };
     },
   };
 }
