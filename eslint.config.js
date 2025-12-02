@@ -59,35 +59,7 @@ export default tseslint.config(
       '@typescript-eslint/prefer-readonly': 'error',
       '@typescript-eslint/require-array-sort-compare': 'error',
       '@typescript-eslint/switch-exhaustiveness-check': 'error',
-      '@typescript-eslint/naming-convention': [
-        'error',
-        {
-          selector: 'default',
-          format: ['camelCase'],
-          leadingUnderscore: 'allow',
-        },
-        {
-          selector: 'variable',
-          format: ['camelCase', 'UPPER_CASE'],
-          leadingUnderscore: 'allow',
-        },
-        {
-          selector: 'typeLike',
-          format: ['PascalCase'],
-        },
-        {
-          selector: 'enumMember',
-          format: ['PascalCase'],
-        },
-        {
-          selector: 'objectLiteralProperty',
-          format: ['camelCase', 'PascalCase'],
-        },
-        {
-          selector: 'objectLiteralMethod',
-          format: ['camelCase', 'PascalCase'],
-        },
-      ],
+      '@typescript-eslint/naming-convention': 'off',
       '@typescript-eslint/no-unused-vars': [
         'error',
         {

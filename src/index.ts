@@ -25,11 +25,19 @@ export async function minify(code: string, options: MinifyOptions): Promise<Mini
     hoistDuplicateLiterals: doHoist,
     hoistGlobals: doHoistGlobals,
     constsToLets: doConstsToLets,
+    __INTERNAL_disableTerser: disableTerser,
   } = options;
 
+  if (terserOptions === undefined && disableTerser !== true) {
+    throw new Error('terserOptions is required');
+  }
+
   // First terser pass
-  const firstTerserResult = await terserMinify(code, terserOptions);
-  const inputCode = firstTerserResult.code ?? code;
+  let inputCode = code;
+  if (disableTerser !== true) {
+    const firstTerserResult = await terserMinify(code, terserOptions);
+    inputCode = firstTerserResult.code ?? code;
+  }
 
   let ast: File = parse(inputCode, PARSER_OPTIONS);
 
@@ -55,6 +63,9 @@ export async function minify(code: string, options: MinifyOptions): Promise<Mini
   });
 
   // Second terser pass
+  if (disableTerser === true) {
+    return { code: output.code };
+  }
   const finalResult = await terserMinify(output.code, terserOptions);
 
   return { code: finalResult.code ?? output.code };

@@ -1,7 +1,7 @@
 import { minify } from '../src/index.js';
 
 async function transform(code: string): Promise<string> {
-  return (await minify(code, { hoistDuplicateLiterals: true })).code;
+  return (await minify(code, { hoistDuplicateLiterals: true, __INTERNAL_disableTerser: true })).code;
 }
 
 describe('hoistDuplicateLiterals', () => {
@@ -16,7 +16,7 @@ describe('hoistDuplicateLiterals', () => {
       `;
       const output = await transform(input);
 
-      expect(output).toMatch(/const [a-zA-Z]="hello"/);
+      expect(output).toMatch(/const \w+="hello"/);
       expect((output.match(/"hello"/g) || []).length).toBe(1);
     });
 
@@ -56,8 +56,8 @@ describe('hoistDuplicateLiterals', () => {
       `;
       const output = await transform(input);
 
-      expect(output).toMatch(/const [a-zA-Z]="something"/);
-      expect(output).toMatch(/[a-zA-Z]\[[a-zA-Z]\]/);
+      expect(output).toMatch(/const \w+="something"/);
+      expect(output).toMatch(/\w+\[\w+\]/);
     });
 
     test('reverses bracket notation when not hoisted', async () => {
@@ -227,7 +227,7 @@ describe('hoistDuplicateLiterals', () => {
       `;
       const output = await transform(input);
 
-      expect(output).toMatch(/^const [a-zA-Z]="deeply"/);
+      expect(output).toMatch(/^const \w+="deeply"/);
     });
   });
 
@@ -401,7 +401,7 @@ describe('selective hoisting', () => {
     const output = await transform(input);
 
     expect(output).toMatch(/="longName"/);
-    expect(output).toMatch(/\[[a-zA-Z]\]=/);
+    expect(output).toMatch(/\[\w+\]=/);
   });
 
   test('hoists medium strings for literals and property access but not object keys', async () => {
@@ -434,7 +434,7 @@ describe('class method and property hoisting', () => {
     const output = await transform(input);
 
     expect(output).toMatch(/="longMethodName"/);
-    expect(output).toMatch(/\[[a-zA-Z]\]\(\)/);
+    expect(output).toMatch(/\[\w+\]\(\)/);
   });
 
   test('hoists class property names when profitable', async () => {
@@ -452,7 +452,7 @@ describe('class method and property hoisting', () => {
     const output = await transform(input);
 
     expect(output).toMatch(/="longPropertyName"/);
-    expect(output).toMatch(/\[[a-zA-Z]\]=/);
+    expect(output).toMatch(/\[\w+\]=/);
   });
 
   test('does not hoist short class method names', async () => {
@@ -532,8 +532,8 @@ describe('class method and property hoisting', () => {
     const output = await transform(input);
 
     expect(output).toMatch(/="longAccessorName"/);
-    expect(output).toMatch(/get\s*\[[a-zA-Z]\]/);
-    expect(output).toMatch(/set\s*\[[a-zA-Z]\]/);
+    expect(output).toMatch(/get\s*\[\w+\]/);
+    expect(output).toMatch(/set\s*\[\w+\]/);
   });
 
   test('handles static methods and properties', async () => {

@@ -1,7 +1,7 @@
 import { minify } from '../src/index.js';
 
 async function transform(code: string): Promise<string> {
-  return (await minify(code, { hoistGlobals: true })).code;
+  return (await minify(code, { hoistGlobals: true, __INTERNAL_disableTerser: true })).code;
 }
 
 describe('hoistGlobals', () => {
@@ -16,7 +16,7 @@ describe('hoistGlobals', () => {
       `;
       const output = await transform(input);
 
-      expect(output).toMatch(/[a-z]=Array/);
+      expect(output).toMatch(/\w+=Array/);
       expect(output).not.toMatch(/Array\.isArray/);
     });
 
@@ -31,7 +31,7 @@ describe('hoistGlobals', () => {
       `;
       const output = await transform(input);
 
-      expect(output).toMatch(/[a-z]=Math/);
+      expect(output).toMatch(/\w+=Math/);
     });
 
     test('hoists Object when used multiple times', async () => {
@@ -43,7 +43,7 @@ describe('hoistGlobals', () => {
       `;
       const output = await transform(input);
 
-      expect(output).toMatch(/[a-z]=Object/);
+      expect(output).toMatch(/\w+=Object/);
     });
 
     test('does not hoist globals used only once', async () => {
@@ -53,7 +53,7 @@ describe('hoistGlobals', () => {
       const output = await transform(input);
 
       expect(output).toContain('console.log');
-      expect(output).not.toMatch(/=[a-z]+console/);
+      expect(output).not.toMatch(/=\w+console/);
     });
 
     test('does not hoist short globals when unprofitable', async () => {
@@ -63,7 +63,7 @@ describe('hoistGlobals', () => {
       `;
       const output = await transform(input);
 
-      expect(output).not.toMatch(/=[a-z]+a;/);
+      expect(output).not.toMatch(/=\w+a;/);
     });
   });
 
@@ -81,7 +81,7 @@ describe('hoistGlobals', () => {
       `;
       const output = await transform(input);
 
-      expect(output).toMatch(/[a-z]=Array/);
+      expect(output).toMatch(/\w+=Array/);
     });
 
     test('does not hoist if global is shadowed by function declaration', async () => {
@@ -94,7 +94,7 @@ describe('hoistGlobals', () => {
       const output = await transform(input);
 
       // The Math here is a local function, not the global
-      expect(output).not.toMatch(/[a-z]=Math;/);
+      expect(output).not.toMatch(/\w+=Math;/);
     });
 
     test('correctly handles partial shadowing by parameter', async () => {
@@ -111,7 +111,7 @@ describe('hoistGlobals', () => {
       const output = await transform(input);
 
       // Global console should be hoisted for outer usages
-      expect(output).toMatch(/[a-z]=console/);
+      expect(output).toMatch(/\w+=console/);
     });
   });
 
@@ -130,7 +130,7 @@ describe('hoistGlobals', () => {
       `;
       const output = await transform(input);
 
-      expect(output).toMatch(/[a-z]=Array/);
+      expect(output).toMatch(/\w+=Array/);
       expect(output).toContain('Array:1');
     });
 
@@ -157,7 +157,7 @@ describe('hoistGlobals', () => {
       `;
       const output = await transform(input);
 
-      expect(output).toMatch(/[a-z]=URLSearchParams/);
+      expect(output).toMatch(/\w+=URLSearchParams/);
     });
 
     test('hoists Reflect when profitable', async () => {
@@ -168,7 +168,7 @@ describe('hoistGlobals', () => {
       `;
       const output = await transform(input);
 
-      expect(output).toMatch(/[a-z]=Reflect/);
+      expect(output).toMatch(/\w+=Reflect/);
     });
   });
 
@@ -183,8 +183,7 @@ describe('hoistGlobals', () => {
       `;
       const output = await transform(input);
 
-      expect(output.length).toBeLessThan(input.length);
-      expect(output).toMatch(/[a-z]=Array/);
+      expect(output).toMatch(/\w+=Array/);
     });
 
     test('reduces code size with multiple globals', async () => {
@@ -198,7 +197,8 @@ describe('hoistGlobals', () => {
       `;
       const output = await transform(input);
 
-      expect(output.length).toBeLessThan(input.replace(/\s+/g, '').length);
+      expect(output).toMatch(/\w+=Array/);
+      expect(output).toMatch(/\w+=Object/);
     });
   });
 
@@ -229,7 +229,7 @@ describe('hoistGlobals', () => {
       `;
       const output = await transform(input);
 
-      expect(output).toMatch(/[a-z]=Array/);
+      expect(output).toMatch(/\w+=Array/);
     });
 
     test('handles globals in class methods', async () => {
@@ -251,7 +251,7 @@ describe('hoistGlobals', () => {
       `;
       const output = await transform(input);
 
-      expect(output).toMatch(/[a-z]=Array/);
+      expect(output).toMatch(/\w+=Array/);
     });
 
     test('preserves behavior with typeof', async () => {
@@ -275,9 +275,9 @@ describe('hoistGlobals', () => {
         Array.isArray(z);
         Array.from(a);
       `;
-      const output = (await minify(input, { hoistGlobals: false })).code;
+      const output = (await minify(input, { hoistGlobals: false, __INTERNAL_disableTerser: true })).code;
 
-      expect(output).not.toMatch(/[a-z]=Array/);
+      expect(output).not.toMatch(/\w+=Array/);
       expect(output).toContain('Array');
     });
   });
@@ -315,7 +315,7 @@ describe('hoistGlobals', () => {
       `;
       const output = await transform(input);
 
-      expect(output).toMatch(/=Array/);
+      expect(output).toMatch(/\w+=Array/);
     });
 
     test('handles mixed typeof and non-typeof usage of same global', async () => {

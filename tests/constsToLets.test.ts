@@ -1,7 +1,7 @@
 import { minify } from '../src/index.js';
 
 async function transform(code: string): Promise<string> {
-  return (await minify(code, { constsToLets: true })).code;
+  return (await minify(code, { constsToLets: true, __INTERNAL_disableTerser: true })).code;
 }
 
 describe('constsToLets', () => {
@@ -231,10 +231,10 @@ describe('constsToLets', () => {
         console.log("test");
         console.log("test");
       `;
-      const output = (await minify(input, { hoistDuplicateLiterals: true, constsToLets: true }))
+      const output = (await minify(input, { hoistDuplicateLiterals: true, constsToLets: true, __INTERNAL_disableTerser: true }))
         .code;
 
-      expect(output).toMatch(/let [a-z]="test"/);
+      expect(output).toMatch(/let \w+="test"/);
       expect(output).not.toMatch(/\bconst\b/);
     });
 
@@ -244,7 +244,7 @@ describe('constsToLets', () => {
         const anotherVar = 2;
         console.log(myVar + anotherVar);
       `;
-      const output = (await minify(input, { hoistDuplicateLiterals: false, constsToLets: true }))
+      const output = (await minify(input, { hoistDuplicateLiterals: false, constsToLets: true, __INTERNAL_disableTerser: true }))
         .code;
 
       expect(output).not.toMatch(/\bconst\b/);

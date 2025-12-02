@@ -1,6 +1,6 @@
 {
   "name": "niu",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "description": "Extension to the terser JavaScript minifier",
   "type": "module",
   "main": "dist/index.js",

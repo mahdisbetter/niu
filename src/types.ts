@@ -3,10 +3,12 @@ import type { File, Identifier, Node, StringLiteral } from '@babel/types';
 import type { MinifyOptions as TerserMinifyOptions } from 'terser';
 
 export interface MinifyOptions {
-  readonly terserOptions: TerserMinifyOptions;
+  readonly terserOptions?: TerserMinifyOptions;
   readonly hoistDuplicateLiterals?: boolean;
   readonly hoistGlobals?: boolean;
   readonly constsToLets?: boolean;
+  /** @internal Skip terser passes - for testing only */
+  readonly __INTERNAL_disableTerser?: boolean;
 }
 
 /** Result of the minify function. */
