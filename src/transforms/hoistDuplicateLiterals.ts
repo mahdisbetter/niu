@@ -131,7 +131,7 @@ interface StringUsageCollected {
 /**
  * Hoists duplicate literals to variables for byte savings.
  */
-export function hoistDuplicateLiterals(ast: File, _options: MinifyOptions = {}): HoistResult {
+export function hoistDuplicateLiterals(ast: File, _options?: MinifyOptions): HoistResult {
   const stringUsage = new Map<string, StringUsageCollected>();
   const otherLiterals = new Map<string, LiteralInfo>();
 

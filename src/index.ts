@@ -5,7 +5,6 @@ import { minify as terserMinify } from 'terser';
 import { constsToLets } from './transforms/constsToLets.js';
 import { hoistDuplicateLiterals } from './transforms/hoistDuplicateLiterals.js';
 import { hoistGlobals } from './transforms/hoistGlobals.js';
-import { mangleIdentifiers } from './transforms/mangleIdentifiers.js';
 import type { MinifyOptions, MinifyResult } from './types.js';
 
 const generate = (_generate as unknown as { default: typeof _generate.default }).default;
@@ -20,7 +19,7 @@ const PARSER_OPTIONS = {
   ],
 };
 
-export async function minify(code: string, options: MinifyOptions = {}): Promise<MinifyResult> {
+export async function minify(code: string, options: MinifyOptions): Promise<MinifyResult> {
   const {
     terserOptions,
     hoistDuplicateLiterals: doHoist,
@@ -28,13 +27,9 @@ export async function minify(code: string, options: MinifyOptions = {}): Promise
     constsToLets: doConstsToLets,
   } = options;
 
-  let inputCode = code;
-  if (terserOptions !== undefined) {
-    const terserResult = await terserMinify(code, terserOptions);
-    if (terserResult.code !== undefined) {
-      inputCode = terserResult.code;
-    }
-  }
+  // First terser pass
+  const firstTerserResult = await terserMinify(code, terserOptions);
+  const inputCode = firstTerserResult.code ?? code;
 
   let ast: File = parse(inputCode, PARSER_OPTIONS);
 
@@ -48,13 +43,6 @@ export async function minify(code: string, options: MinifyOptions = {}): Promise
     ast = result.ast;
   }
 
-  // Re-parse to rebuild scopes for mangling (Babel caches scope data on AST nodes)
-  const intermediate = generate(ast, { compact: true });
-  ast = parse(intermediate.code, PARSER_OPTIONS);
-
-  const mangleResult = mangleIdentifiers(ast);
-  ast = mangleResult.ast;
-
   if (doConstsToLets === true) {
     const result = constsToLets(ast);
     ast = result.ast;
@@ -66,7 +54,10 @@ export async function minify(code: string, options: MinifyOptions = {}): Promise
     comments: false,
   });
 
-  return { code: output.code };
+  // Second terser pass
+  const finalResult = await terserMinify(output.code, terserOptions);
+
+  return { code: finalResult.code ?? output.code };
 }
 
 export interface NiuPluginOptions extends MinifyOptions {
@@ -94,7 +85,7 @@ interface NiuPlugin {
   generateBundle: (options: unknown, bundle: OutputBundle) => Promise<void>;
 }
 
-export function niuPlugin(options: NiuPluginOptions = {}): NiuPlugin {
+export function niuPlugin(options: NiuPluginOptions): NiuPlugin {
   const { include = [/\.[cm]?js$/], exclude = [], ...minifyOptions } = options;
   return {
     name: 'niu',
@@ -121,5 +112,4 @@ export function niuPlugin(options: NiuPluginOptions = {}): NiuPlugin {
 export { constsToLets } from './transforms/constsToLets.js';
 export { hoistDuplicateLiterals } from './transforms/hoistDuplicateLiterals.js';
 export { hoistGlobals } from './transforms/hoistGlobals.js';
-export { mangleIdentifiers } from './transforms/mangleIdentifiers.js';
 export type { MinifyOptions, MinifyResult } from './types.js';

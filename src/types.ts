@@ -3,7 +3,7 @@ import type { File, Identifier, Node, StringLiteral } from '@babel/types';
 import type { MinifyOptions as TerserMinifyOptions } from 'terser';
 
 export interface MinifyOptions {
-  readonly terserOptions?: TerserMinifyOptions;
+  readonly terserOptions: TerserMinifyOptions;
   readonly hoistDuplicateLiterals?: boolean;
   readonly hoistGlobals?: boolean;
   readonly constsToLets?: boolean;
@@ -25,12 +25,6 @@ export interface HoistedBinding {
 export interface HoistResult {
   readonly ast: File;
   readonly hoistedLiteralBindings: readonly HoistedBinding[];
-}
-
-/** Result of the mangleIdentifiers transform. */
-export interface MangleResult {
-  readonly ast: File;
-  readonly renameMap: Map<BabelBinding, string>;
 }
 
 /** Result of the constsToLets transform. */
@@ -97,22 +91,6 @@ export interface UsageCounts {
   readonly objectPropertyCount: number;
 }
 
-/** Babel's internal binding representation. */
-export interface BabelBinding {
-  identifier: Identifier;
-  scope: BabelScope;
-  path: NodePath;
-  kind: string;
-  constantViolations: NodePath[];
-  constant: boolean;
-  referencePaths: NodePath[];
-  referenced: boolean;
-  references: number;
-  hasDeoptedValue: boolean;
-  hasValue: boolean;
-  value: unknown;
-}
-
 /** Babel's internal scope representation. */
 export interface BabelScope {
   uid: number;
@@ -120,25 +98,11 @@ export interface BabelScope {
   block: Node;
   labels: Map<string, NodePath>;
   inited: boolean;
-  bindings: Record<string, BabelBinding>;
+  bindings: Record<string, unknown>;
   references: Record<string, boolean>;
   globals: Record<string, Identifier>;
   uids: Record<string, boolean>;
   data: Record<string, unknown>;
   crawling: boolean;
   parent?: BabelScope;
-}
-
-/** Info about a scope and its bindings for mangling. */
-export interface ScopeInfo {
-  readonly scope: BabelScope;
-  readonly path: NodePath;
-  readonly bindings: BindingInfo[];
-}
-
-/** Info about a single binding for mangling priority. */
-export interface BindingInfo {
-  readonly name: string;
-  readonly binding: BabelBinding;
-  readonly references: number;
 }

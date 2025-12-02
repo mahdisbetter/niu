@@ -231,7 +231,8 @@ describe('constsToLets', () => {
         console.log("test");
         console.log("test");
       `;
-      const output = (await minify(input, { hoistDuplicateLiterals: true, constsToLets: true })).code;
+      const output = (await minify(input, { hoistDuplicateLiterals: true, constsToLets: true }))
+        .code;
 
       expect(output).toMatch(/let [a-z]="test"/);
       expect(output).not.toMatch(/\bconst\b/);
@@ -243,7 +244,8 @@ describe('constsToLets', () => {
         const anotherVar = 2;
         console.log(myVar + anotherVar);
       `;
-      const output = (await minify(input, { hoistDuplicateLiterals: false, constsToLets: true })).code;
+      const output = (await minify(input, { hoistDuplicateLiterals: false, constsToLets: true }))
+        .code;
 
       expect(output).not.toMatch(/\bconst\b/);
       expect(output).toMatch(/\blet\b/);
